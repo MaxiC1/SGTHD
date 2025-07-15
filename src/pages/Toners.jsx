@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { formatearNumeroCL } from '../utils/formatUtils';
 
 export default function Toners() {
   const [toners, setToners] = useState([]);
@@ -85,17 +86,17 @@ export default function Toners() {
             {toners.map((toner) => (
               <tr key={toner.id} className="hover:bg-gray-50">
                 <td className="p-2 border">{toner.modelo}</td>
-                <td className="p-2 border">{toner.rendimiento}</td>
+                <td className="p-2 border">{formatearNumeroCL(toner.rendimiento)}</td>
                 <td className="p-2 border">
                   <button
                     onClick={() => openModal(toner)}
-                    className="text-blue-600 hover:underline"
+                    className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded"
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => eliminarToner(toner.id)}
-                    className="text-red-600 hover:underline"
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
                   >
                     Eliminar
                   </button>

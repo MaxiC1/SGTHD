@@ -9,7 +9,7 @@ export default function Navbar() {
   return (
     <nav className="bg-blue-500 text-white px-4 py-3 flex justify-between items-center">
       <div className="flex gap-4">
-        <Link to="/dashboard" className="hover:underline">Dashboard</Link>
+        <Link to="/dashboard" className="hover:underline">Inicio</Link>
         <Link to="/registros" className="hover:underline">Registros</Link>
         <Link to="/registro-toner" className="hover:underline">Nuevo Registro</Link>
         {user?.role === 'admin' && (

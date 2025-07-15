@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthStore } from '../store/authStore';
 import ExportarPDF from '../components/ExportarPDF';
+import { formatearNumeroCL } from '../utils/formatUtils';
 
 export default function Registros() {
   const user = useAuthStore(state => state.user);
@@ -130,7 +131,7 @@ export default function Registros() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium">Últimos</label>
+          <label className="block text-sm font-medium">Últimos Movimientos</label>
           <select value={filtroLimite} onChange={e => setFiltroLimite(e.target.value)} className="border p-2 w-full">
             <option value="">-- Todos --</option>
             <option value="5">5</option>
@@ -177,8 +178,8 @@ export default function Registros() {
               <th className="border p-2">Serie</th>
               <th className="border p-2">Tóner</th>
               <th className="border p-2">Tipo</th>
-              <th className="border p-2">Último</th>
-              <th className="border p-2">Actual</th>
+              <th className="border p-2">Último Contador</th>
+              <th className="border p-2">Contador Actual</th>
               <th className="border p-2">Diferencia</th>
               <th className="border p-2">Obs.</th>
               <th className="border p-2">Estado Tóner</th>
@@ -195,12 +196,12 @@ export default function Registros() {
                 <td className="border p-2">{r.serie_maquina || '-'}</td>
                 <td className="border p-2">{r.toners?.modelo || '-'}</td>
                 <td className="border p-2">{r.tipos_toner_instalado?.nombre || '-'}</td>
-                <td className="border p-2">{r.ultimo_contador || 0}</td>
-                <td className="border p-2">{r.contador_actual || 0}</td>
-                <td className="border p-2">{(r.contador_actual || 0) - (r.ultimo_contador || 0)}</td>
+                <td className="border p-2">{formatearNumeroCL(r.ultimo_contador || 0)}</td>
+                <td className="border p-2">{formatearNumeroCL(r.contador_actual || 0)}</td>
+                <td className="border p-2">{formatearNumeroCL(r.contador_actual - r.ultimo_contador)}</td>
                 <td className="border p-2">
                   {r.observaciones
-                    ? <button className="text-blue-600 underline" onClick={() => setObservacionModal(r.observaciones)}>Ver</button>
+                    ? <button className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded" onClick={() => setObservacionModal(r.observaciones)}>Ver</button>
                     : '-'}
                 </td>
                 <td className="border p-2">

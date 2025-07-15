@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
+import { formatearNumeroCL } from '../utils/formatUtils';
 
 export default function RegistroForm() {
   const [serieInput, setSerieInput] = useState('');
@@ -238,8 +239,8 @@ export default function RegistroForm() {
               ))}
             </select>
           </div>
-          <div><strong>Rendimiento esperado:</strong> {rendimientoEsperado} copias</div>
-          <div><strong>Último contador:</strong> {ultimoContador}</div>
+          <div><strong>Rendimiento esperado:</strong> {formatearNumeroCL(rendimientoEsperado)} copias</div>
+          <div><strong>Último contador:</strong> {formatearNumeroCL(ultimoContador)}</div>
           {fechaUltimoCambio && (
             <div><strong>Último cambio:</strong> {new Date(fechaUltimoCambio).toLocaleDateString()}</div>
           )}

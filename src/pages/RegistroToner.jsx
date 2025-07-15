@@ -1,7 +1,3 @@
-import { useState, useEffect } from 'react';
-import { clientes } from '../data/clientes';
-import { toners } from '../data/toners';
-import { historialMaquinas } from '../data/historial';
 import RegistroForm from '../components/RegistroForm';
 
 export default function RegistroToner() {

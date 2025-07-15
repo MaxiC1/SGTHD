@@ -132,13 +132,13 @@ export default function Maquinas() {
                 <td className="px-4 py-2 border space-x-2">
                   <button
                     onClick={() => openModal(m)}
-                    className="text-blue-600 hover:underline"
+                    className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded"
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => deleteMaquina(m.id)}
-                    className="text-red-600 hover:underline"
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
                   >
                     Eliminar
                   </button>

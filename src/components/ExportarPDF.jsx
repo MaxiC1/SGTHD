@@ -1,6 +1,7 @@
 // components/ExportarPDF.jsx
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatearNumeroCL } from '../utils/formatUtils';
 
 export default function ExportarPDF({ registros, filtros }) {
   const generarPDF = () => {
@@ -21,14 +22,15 @@ export default function ExportarPDF({ registros, filtros }) {
 
     autoTable(doc, {
       startY: 40,
-      head: [['Fecha', 'Cliente', 'Serie', 'Tóner', 'Último', 'Actual', 'Obs.']],
+      head: [['Fecha', 'Cliente', 'Serie', 'Tóner', 'Último Contador', 'Contador Actual', 'Diferencia', 'Observaciones']],
       body: registros.map((r) => [
         r.fecha,
         r.clientes?.nombre || '-',
         r.serie_maquina,
         r.toner?.modelo || '-',
-        r.ultimo_contador,
-        r.contador_actual,
+        formatearNumeroCL(r.ultimo_contador),
+        formatearNumeroCL(r.contador_actual),
+        formatearNumeroCL(r.contador_actual - r.ultimo_contador),
         r.observaciones || '',
       ]),
     });

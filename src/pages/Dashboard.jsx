@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import toast, { Toaster } from 'react-hot-toast';
+import { formatearNumeroCL } from '../utils/formatUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -36,8 +37,7 @@ export default function Dashboard() {
   const formatearFecha = (fechaStr) => {
     const fecha = new Date(fechaStr);
     const opcionesFecha = { day: '2-digit', month: '2-digit', year: 'numeric' };
-    const opcionesHora = { hour: '2-digit', minute: '2-digit', hour12: false };
-    return `${fecha.toLocaleTimeString([], opcionesHora)} - ${fecha.toLocaleDateString([], opcionesFecha)}`;
+    return `${fecha.toLocaleDateString([], opcionesFecha)}`;
   };
 
   const getEmailById = (id) => {
@@ -213,6 +213,7 @@ export default function Dashboard() {
                     <th className="px-2 py-1">Modelo</th>
                     <th className="px-2 py-1">Tipo</th>
                     <th className="px-2 py-1">Contador</th>
+                    <th className="px-2 py-1">Diferencia</th>
                     <th className="px-2 py-1">Observaciones</th>
                     <th className="px-2 py-1">Acciones</th>
                   </tr>
@@ -225,7 +226,8 @@ export default function Dashboard() {
                       <td className="px-2 py-1">{r.clientes?.nombre}</td>
                       <td className="px-2 py-1">{r.toners?.modelo}</td>
                       <td className="px-2 py-1">{r.tipos_toner?.nombre}</td>
-                      <td className="px-2 py-1">{r.ultimo_contador} → {r.contador_actual}</td>
+                      <td className="px-2 py-1">{formatearNumeroCL(r.ultimo_contador)} → {formatearNumeroCL(r.contador_actual)}</td>
+                      <td className="px-2 py-1">{formatearNumeroCL((r.contador_actual) - (r.ultimo_contador))}</td>
                       <td className="px-2 py-1">{r.observaciones || '—'}</td>
                       <td className="px-2 py-1 space-x-1">
                         <button onClick={() => aprobarRegistro(r)} className="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700">✅</button>
@@ -294,7 +296,7 @@ export default function Dashboard() {
                     <td className="px-2 py-1">{r.observaciones || '—'}</td>
                     <td className="px-2 py-1">{getEmailById(r.aprobado_por)}</td>
                     <td className="px-2 py-1">
-                      <button onClick={() => eliminarHistorial(r.id)} className="text-red-500 hover:text-red-700 text-xs">🗑 Limpiar</button>
+                      <button onClick={() => eliminarHistorial(r.id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">🗑 Limpiar</button>
                     </td>
                   </tr>
                 ))}
