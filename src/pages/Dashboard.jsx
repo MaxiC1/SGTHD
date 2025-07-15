@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [rendimientoStats, setRendimientoStats] = useState({});
   const [pendientes, setPendientes] = useState([]);
   const [historial, setHistorial] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
 
   const handleLogout = () => {
     logout();
@@ -39,11 +40,21 @@ export default function Dashboard() {
     return `${fecha.toLocaleTimeString([], opcionesHora)} - ${fecha.toLocaleDateString([], opcionesFecha)}`;
   };
 
+  const getEmailById = (id) => {
+    const user = usuarios.find((u) => u.id === id);
+    return user?.email || '—';
+  };
+
   useEffect(() => {
+    const cargarUsuarios = async () => {
+      const { data, error } = await supabase.from('users_livianos').select('id, email');
+      if (!error) setUsuarios(data);
+    };
+
     const cargarEstadisticas = async () => {
       const { data, error } = await supabase
         .from('registros')
-        .select(`fecha, cliente_id, modelo_toner_id, contador_actual, ultimo_contador, clientes(nombre), toners(modelo, rendimiento)`);
+        .select(`fecha, cliente_id, modelo_toner_id, contador_actual, ultimo_contador, clientes(nombre), toners(modelo, rendimiento), aprobado_por`);
 
       if (error) return toast.error('Error al cargar estadísticas');
 
@@ -70,15 +81,15 @@ export default function Dashboard() {
         }
       });
 
-      setTonerStats(tonerMensual);
-      setPorClienteStats(porCliente);
-
       const promedio = {};
       for (const modelo in rendimiento) {
         promedio[modelo] = rendimiento[modelo].count > 0
           ? Math.round(rendimiento[modelo].total / rendimiento[modelo].count)
           : 0;
       }
+
+      setTonerStats(tonerMensual);
+      setPorClienteStats(porCliente);
       setRendimientoStats(promedio);
     };
 
@@ -88,29 +99,29 @@ export default function Dashboard() {
         .select(`*, clientes(nombre), toners(modelo), tipos_toner(nombre)`)
         .order('creado_el', { ascending: false });
 
-      if (error) return toast.error('Error al cargar pendientes');
-      setPendientes(data || []);
+      if (!error) setPendientes(data || []);
     };
 
     const cargarHistorial = async () => {
-      if (user?.role !== 'secretaria') return;
-
       const { data, error } = await supabase
         .from('registros_historial')
-        .select(`id, fecha, cliente_id, modelo_toner_id, tipo_toner_id, resultado, observaciones, toners(modelo), tipos_toner(nombre), clientes(nombre)`)
+        .select(`id, fecha, cliente_id, modelo_toner_id, tipo_toner_id, resultado, observaciones, aprobado_por, toners(modelo), tipos_toner(nombre), clientes(nombre)`)
         .eq('creado_por', user.id)
         .order('fecha', { ascending: false });
 
-      if (error) return toast.error('Error al cargar historial');
-      setHistorial(data || []);
+      if (!error) setHistorial(data || []);
     };
 
-    if (user?.role === 'admin') {
-      cargarEstadisticas();
-      cargarPendientes();
+    if (user) {
+      cargarUsuarios();
+      if (user.role === 'admin') {
+        cargarEstadisticas();
+        cargarPendientes();
+      }
+      if (user.role === 'secretaria') {
+        cargarHistorial();
+      }
     }
-
-    if (user) cargarHistorial();
   }, [user]);
 
   const aprobarRegistro = async (registro) => {
@@ -124,7 +135,8 @@ export default function Dashboard() {
       tipo_toner_instalado_id: registro.tipo_toner_instalado_id,
       ultimo_contador: registro.ultimo_contador,
       contador_actual: registro.contador_actual,
-      observaciones: registro.observaciones
+      observaciones: registro.observaciones,
+      aprobado_por: user.id,
     });
 
     if (error) return toast.error('No se pudo aprobar');
@@ -137,11 +149,12 @@ export default function Dashboard() {
       fecha: registro.fecha,
       cliente_id: registro.cliente_id,
       modelo_toner_id: registro.modelo_toner_id,
-      tipo_toner_id: registro.tipo_toner_instalado_id
+      tipo_toner_id: registro.tipo_toner_instalado_id,
+      aprobado_por: user.id,
     });
 
     await supabase.from('registros_pendientes').delete().eq('id', registro.id);
-    setPendientes(pendientes.filter(p => p.id !== registro.id));
+    setPendientes((prev) => prev.filter((p) => p.id !== registro.id));
   };
 
   const rechazarRegistro = async (registro) => {
@@ -153,27 +166,28 @@ export default function Dashboard() {
       fecha: registro.fecha,
       cliente_id: registro.cliente_id,
       modelo_toner_id: registro.modelo_toner_id,
-      tipo_toner_id: registro.tipo_toner_instalado_id
+      tipo_toner_id: registro.tipo_toner_instalado_id,
+      aprobado_por: user.id,
     });
 
     await supabase.from('registros_pendientes').delete().eq('id', registro.id);
-    setPendientes(pendientes.filter(p => p.id !== registro.id));
+    setPendientes((prev) => prev.filter((p) => p.id !== registro.id));
   };
 
   const eliminarHistorial = async (id) => {
     await supabase.from('registros_historial').delete().eq('id', id);
-    setHistorial(historial.filter((r) => r.id !== id));
+    setHistorial((prev) => prev.filter((r) => r.id !== id));
   };
 
   const labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
   const generarDataset = (stats) => {
     const series = new Set();
-    Object.values(stats).forEach(m => Object.keys(m).forEach(s => series.add(s)));
+    Object.values(stats).forEach((m) => Object.keys(m).forEach((s) => series.add(s)));
     return Array.from(series).map((serie, idx) => ({
       label: serie,
       data: labels.map((_, i) => stats[i]?.[serie] || 0),
-      backgroundColor: `hsl(${idx * 50}, 70%, 60%)`
+      backgroundColor: `hsl(${idx * 50}, 70%, 60%)`,
     }));
   };
 
@@ -226,22 +240,21 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
             <div className="bg-white shadow rounded p-4 h-[400px]">
-              <Bar data={{ labels, datasets: generarDataset(tonerStats) }}
-                   options={{ plugins: { title: { display: true, text: 'Cambios por Modelo/Mes' } }, responsive: true, maintainAspectRatio: false }} />
+              <Bar data={{ labels, datasets: generarDataset(tonerStats) }} options={{ plugins: { title: { display: true, text: 'Cambios por Modelo/Mes' } }, responsive: true, maintainAspectRatio: false }} />
             </div>
             <div className="bg-white shadow rounded p-4 h-[400px]">
-              <Bar data={{ labels, datasets: generarDataset(porClienteStats) }}
-                   options={{ plugins: { title: { display: true, text: 'Cambios por Cliente/Mes' } }, responsive: true, maintainAspectRatio: false }} />
+              <Bar data={{ labels, datasets: generarDataset(porClienteStats) }} options={{ plugins: { title: { display: true, text: 'Cambios por Cliente/Mes' } }, responsive: true, maintainAspectRatio: false }} />
             </div>
           </div>
+
           <div className="bg-white shadow rounded p-4 h-[400px] mb-10">
             <Bar data={{
               labels: Object.keys(rendimientoStats),
               datasets: [{
                 label: 'Promedio de Páginas por Tóner',
                 data: Object.values(rendimientoStats),
-                backgroundColor: 'rgba(75, 192, 192, 0.6)'
-              }]
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              }],
             }} options={{ plugins: { title: { display: true, text: 'Rendimiento Promedio por Tóner' } }, responsive: true, maintainAspectRatio: false }} />
           </div>
         </>
@@ -262,6 +275,7 @@ export default function Dashboard() {
                   <th className="px-2 py-1">Tipo</th>
                   <th className="px-2 py-1">Estado</th>
                   <th className="px-2 py-1">Observaciones</th>
+                  <th className="px-2 py-1">Autorizado por</th>
                   <th className="px-2 py-1">Acción</th>
                 </tr>
               </thead>
@@ -278,6 +292,7 @@ export default function Dashboard() {
                       </span>
                     </td>
                     <td className="px-2 py-1">{r.observaciones || '—'}</td>
+                    <td className="px-2 py-1">{getEmailById(r.aprobado_por)}</td>
                     <td className="px-2 py-1">
                       <button onClick={() => eliminarHistorial(r.id)} className="text-red-500 hover:text-red-700 text-xs">🗑 Limpiar</button>
                     </td>

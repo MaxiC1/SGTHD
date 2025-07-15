@@ -1,4 +1,3 @@
-// src/pages/Registros.jsx
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthStore } from '../store/authStore';
@@ -20,30 +19,54 @@ export default function Registros() {
 
   const [observacionModal, setObservacionModal] = useState(null);
 
+  const fetchEmails = async (ids) => {
+    const { data, error } = await supabase.rpc('obtener_emails', { ids });
+    if (error) {
+      console.error('Error al obtener emails:', error.message);
+      return [];
+    }
+    return data;
+  };
+
   useEffect(() => {
     const fetchInicial = async () => {
       const { data: regs, error: errR } = await supabase
         .from('registros')
         .select(`
-          id, fecha, guia, serie_maquina, modelo_maquina,
-          contador_actual, ultimo_contador, observaciones,
+          id, 
+          fecha, 
+          guia, 
+          serie_maquina, 
+          modelo_maquina,
+          contador_actual, 
+          ultimo_contador, 
+          observaciones,
+          aprobado_por,
           clientes:cliente_id ( nombre ),
           toners:modelo_toner_id ( modelo, rendimiento ),
           tipos_toner_instalado:tipo_toner_instalado_id ( nombre )
         `)
         .order('fecha', { ascending: false });
-      if (!errR) setRegistros(regs);
 
-      const { data: cls } = await supabase
-        .from('clientes')
-        .select('id, nombre');
+      if (errR) return;
+
+      const aprobadoresIds = regs.map(r => r.aprobado_por).filter(Boolean);
+      const emails = await fetchEmails(aprobadoresIds);
+
+      const registrosConEmail = regs.map(r => ({
+        ...r,
+        aprobado_por_email: emails.find(e => e.id === r.aprobado_por)?.email || '-'
+      }));
+
+      setRegistros(registrosConEmail);
+
+      const { data: cls } = await supabase.from('clientes').select('id, nombre');
       setClientes(cls || []);
 
-      const { data: tns } = await supabase
-        .from('toners')
-        .select('id, modelo');
+      const { data: tns } = await supabase.from('toners').select('id, modelo');
       setToners(tns || []);
     };
+
     fetchInicial();
   }, []);
 
@@ -78,6 +101,7 @@ export default function Registros() {
     <div className="p-4 mt-20">
       <h1 className="text-xl font-bold mb-4">Registros de Cambios de Tóner</h1>
 
+      {/* Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
         <div>
           <label className="block text-sm font-medium">Desde</label>
@@ -116,6 +140,7 @@ export default function Registros() {
         </div>
       </div>
 
+      {/* Filtro de serie */}
       <div className="mb-4">
         <input
           type="text"
@@ -126,6 +151,7 @@ export default function Registros() {
         />
       </div>
 
+      {/* Exportar */}
       <div className="mb-4">
         <ExportarPDF
           registros={withLimit}
@@ -139,6 +165,7 @@ export default function Registros() {
         />
       </div>
 
+      {/* Tabla de registros */}
       <div className="overflow-x-auto">
         <table className="min-w-full border text-sm">
           <thead className="bg-gray-200">
@@ -155,7 +182,7 @@ export default function Registros() {
               <th className="border p-2">Diferencia</th>
               <th className="border p-2">Obs.</th>
               <th className="border p-2">Estado Tóner</th>
-              {user?.role === 'admin' && <th className="border p-2">Acciones</th>}
+              <th className="border p-2">Aprobado por</th>
             </tr>
           </thead>
           <tbody>
@@ -187,17 +214,14 @@ export default function Registros() {
                     return <span className="text-green-600 font-semibold">OK</span>;
                   })()}
                 </td>
-                {user?.role === 'admin' && (
-                  <td className="border p-2">
-                    <button onClick={() => eliminarRegistro(r.id)} className="text-red-600 hover:underline">Eliminar</button>
-                  </td>
-                )}
+                <td className="border p-2">{r.aprobado_por_email}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
+      {/* Modal de observaciones */}
       {observacionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded shadow-lg max-w-md w-full">

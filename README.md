@@ -1,12 +1,30 @@
-# React + Vite
+# Sistema de Gestión de Cambios de Tóner - Hugo Díaz y Cía. Ltda.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este proyecto es un sistema de gestión diseñado específicamente para **controlar los cambios de tóner** de las máquinas **Canon** utilizadas por **Hugo Díaz y Cía. Ltda.**. El sistema permite un manejo ordenado y eficiente de los registros de cambios, asegurando trazabilidad y control sobre las solicitudes y aprobaciones.
 
-Currently, two official plugins are available:
+## 🧩 Funcionalidades principales
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Control de usuarios** con inicio de sesión personalizado:
+  - **Secretaría**: Encargada de generar los registros de cambios de tóner.
+  - **Administradores**: Encargados de aprobar o rechazar los registros.
+  
+- **Flujo de trabajo estructurado**:
+  - La secretaria crea un registro de cambio.
+  - El registro queda en espera de revisión.
+  - Un administrador debe aprobar o rechazar el registro según ciertos criterios definidos.
 
-## Expanding the ESLint configuration
+- **Gestión del sistema por parte de los administradores**:
+  - Agregar nuevas máquinas Canon al sistema.
+  - Registrar nuevos clientes.
+  - Definir modelos de tóner disponibles.
+  - Todo esto bajo ciertos requisitos y validaciones internas.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🔄 Actualizaciones continuas
+
+Este sistema está en constante evolución. Se esperan múltiples cambios y mejoras con el tiempo, por lo que su funcionalidad y estructura puede variar a futuro.
+
+## 👨‍💻 Autor
+
+Este proyecto fue creado y es mantenido por **Maximiliano Casanova**.
+
+---
