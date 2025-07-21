@@ -6,6 +6,7 @@ export default function Maquinas() {
   const [maquinas, setMaquinas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [modelosToner, setModelosToner] = useState([]);
+  const [tiposToner, setTiposToner] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMaquina, setEditingMaquina] = useState(null);
 
@@ -13,6 +14,7 @@ export default function Maquinas() {
     modelo: '',
     serie: '',
     modelo_toner_id: '',
+    tipo_toner_id: '',
     guia_entrega: '',
     departamento: '',
     fecha_instalacion: '',
@@ -24,12 +26,13 @@ export default function Maquinas() {
     fetchMaquinas();
     fetchClientes();
     fetchModelosToner();
+    fetchTiposToner();
   }, []);
 
   const fetchMaquinas = async () => {
     const { data, error } = await supabase
       .from('maquinas')
-      .select('*, clientes(nombre)')
+      .select('*, clientes(nombre), tipos_toner(nombre)')
       .order('fecha_instalacion', { ascending: false });
     if (!error) setMaquinas(data);
   };
@@ -42,6 +45,11 @@ export default function Maquinas() {
   const fetchModelosToner = async () => {
     const { data } = await supabase.from('toners').select('id, modelo');
     setModelosToner(data);
+  };
+
+  const fetchTiposToner = async () => {
+    const { data, error } = await supabase.from('tipos_toner').select('id, nombre');
+    if (!error) setTiposToner(data);
   };
 
   const handleChange = (e) => {
@@ -58,6 +66,7 @@ export default function Maquinas() {
         modelo: maquina.modelo,
         serie: maquina.serie,
         modelo_toner_id: maquina.modelo_toner_id || '',
+        tipo_toner_id: maquina.tipo_toner_id || '',
         guia_entrega: maquina.guia_entrega || '',
         departamento: maquina.departamento || '',
         fecha_instalacion: maquina.fecha_instalacion || '',
@@ -70,6 +79,7 @@ export default function Maquinas() {
         modelo: '',
         serie: '',
         modelo_toner_id: '',
+        tipo_toner_id: '',
         guia_entrega: '',
         departamento: '',
         fecha_instalacion: '',
@@ -82,7 +92,7 @@ export default function Maquinas() {
   };
 
   const saveMaquina = async () => {
-    if (!form.modelo || !form.serie || !form.modelo_toner_id || !form.cliente_id) {
+    if (!form.modelo || !form.serie || !form.modelo_toner_id || !form.cliente_id || !form.tipo_toner_id) {
       return toast.error('Completa todos los campos obligatorios');
     }
 
@@ -143,6 +153,7 @@ export default function Maquinas() {
             <tr>
               <th className="px-4 py-2 border">Modelo</th>
               <th className="px-4 py-2 border">Serie</th>
+              <th className="px-4 py-2 border">Tipo de Tóner</th>
               <th className="px-4 py-2 border">Guía</th>
               <th className="px-4 py-2 border">Depto</th>
               <th className="px-4 py-2 border">Instalación</th>
@@ -156,6 +167,7 @@ export default function Maquinas() {
               <tr key={m.id} className="hover:bg-gray-50">
                 <td className="px-4 py-2 border">{m.modelo}</td>
                 <td className="px-4 py-2 border">{m.serie}</td>
+                <td className="px-4 py-2 border">{m.tipos_toner?.nombre}</td>
                 <td className="px-4 py-2 border">{m.guia_entrega}</td>
                 <td className="px-4 py-2 border">{m.departamento}</td>
                 <td className="px-4 py-2 border">{m.fecha_instalacion}</td>
@@ -182,26 +194,41 @@ export default function Maquinas() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded shadow max-w-md w-full space-y-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white p-6 rounded shadow w-full max-w-2xl sm:flex sm:flex-col">
             <h3 className="text-lg font-semibold text-gray-700">
               {editingMaquina ? 'Editar Máquina' : 'Nueva Máquina'}
             </h3>
 
-            <input name="modelo" placeholder="Modelo" value={form.modelo} onChange={handleChange} className="w-full border px-3 py-2 rounded" />
-            <input name="serie" placeholder="Serie" value={form.serie} onChange={handleChange} className="w-full border px-3 py-2 rounded" />
+            <input name="modelo" placeholder="Modelo" value={form.modelo} onChange={handleChange} className="w-full border px-3 py-2 rounded mb-2" />
+            <input name="serie" placeholder="Serie" value={form.serie} onChange={handleChange} className="w-full border px-3 py-2 rounded mb-2" />
 
             <label className="block text-sm font-medium text-gray-600">Modelo de Tóner:</label>
-            <select name="modelo_toner_id" value={form.modelo_toner_id} onChange={handleChange} className="w-full border px-3 py-2 rounded">
+            <select name="modelo_toner_id" value={form.modelo_toner_id} onChange={handleChange} className="w-full border px-3 py-2 rounded mb-2">
               <option value="">-- Seleccionar modelo --</option>
               {modelosToner.map((m) => (
                 <option key={m.id} value={m.id}>{m.modelo}</option>
               ))}
             </select>
 
-            <input name="guia_entrega" placeholder="Guía de entrega" value={form.guia_entrega} onChange={handleChange} className="w-full border px-3 py-2 rounded" />
-            <input name="departamento" placeholder="Departamento" value={form.departamento} onChange={handleChange} className="w-full border px-3 py-2 rounded" />
-            <input type="date" name="fecha_instalacion" value={form.fecha_instalacion} onChange={handleChange} className="w-full border px-3 py-2 rounded" />
+            <label className="block text-sm font-medium text-gray-600">Tipo de Tóner:</label>
+            <select
+              name="tipo_toner_id"
+              value={form.tipo_toner_id}
+              onChange={handleChange}
+              className="w-full border px-3 py-2 rounded mb-2"
+            >
+              <option value="">-- Seleccionar Tipo --</option>
+              {tiposToner.map((tipo) => (
+                <option key={tipo.id} value={tipo.id}>
+                  {tipo.nombre}
+                </option>
+              ))};
+            </select>
+
+            <input name="guia_entrega" placeholder="Guía de entrega" value={form.guia_entrega} onChange={handleChange} className="w-full border px-3 py-2 rounded mb-2" />
+            <input name="departamento" placeholder="Departamento" value={form.departamento} onChange={handleChange} className="w-full border px-3 py-2 rounded mb-2" />
+            <input type="date" name="fecha_instalacion" value={form.fecha_instalacion} onChange={handleChange} className="w-full border px-3 py-2 rounded mb-2" />
 
             <select name="cliente_id" value={form.cliente_id} onChange={handleChange} className="w-full border px-3 py-2 rounded">
               <option value="">-- Seleccionar Cliente --</option>
