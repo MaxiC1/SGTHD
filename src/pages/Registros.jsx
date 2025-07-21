@@ -45,7 +45,8 @@ export default function Registros() {
           aprobado_por,
           clientes:cliente_id ( nombre ),
           toners:modelo_toner_id ( modelo, rendimiento ),
-          tipos_toner_instalado:tipo_toner_instalado_id ( nombre )
+          tipos_toner_instalado:tipo_toner_instalado_id ( nombre ),
+          color
         `)
         .order('fecha', { ascending: false });
 
@@ -177,6 +178,7 @@ export default function Registros() {
               <th className="border p-2">Modelo</th>
               <th className="border p-2">Serie</th>
               <th className="border p-2">Tóner</th>
+              <th className="border p-2">Color</th>
               <th className="border p-2">Tipo</th>
               <th className="border p-2">Último Contador</th>
               <th className="border p-2">Contador Actual</th>
@@ -195,6 +197,7 @@ export default function Registros() {
                 <td className="border p-2">{r.modelo_maquina || '-'}</td>
                 <td className="border p-2">{r.serie_maquina || '-'}</td>
                 <td className="border p-2">{r.toners?.modelo || '-'}</td>
+                <td className="border p-2">{r.color || '-'}</td>
                 <td className="border p-2">{r.tipos_toner_instalado?.nombre || '-'}</td>
                 <td className="border p-2">{formatearNumeroCL(r.ultimo_contador || 0)}</td>
                 <td className="border p-2">{formatearNumeroCL(r.contador_actual || 0)}</td>

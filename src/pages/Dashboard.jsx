@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [pendientes, setPendientes] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
+  const [observacionModal, setObservacionModal] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -105,7 +106,7 @@ export default function Dashboard() {
     const cargarHistorial = async () => {
       const { data, error } = await supabase
         .from('registros_historial')
-        .select(`id, fecha, cliente_id, modelo_toner_id, tipo_toner_id, resultado, observaciones, aprobado_por, toners(modelo), tipos_toner(nombre), clientes(nombre)`)
+        .select(`id, fecha, cliente_id, modelo_toner_id, tipo_toner_id, resultado, observaciones, aprobado_por, toners(modelo), tipos_toner(nombre), clientes(nombre), color`)
         .eq('creado_por', user.id)
         .order('fecha', { ascending: false });
 
@@ -132,6 +133,7 @@ export default function Dashboard() {
       modelo_maquina: registro.modelo_maquina,
       serie_maquina: registro.serie_maquina,
       modelo_toner_id: registro.modelo_toner_id,
+      color: registro.color,
       tipo_toner_instalado_id: registro.tipo_toner_instalado_id,
       ultimo_contador: registro.ultimo_contador,
       contador_actual: registro.contador_actual,
@@ -149,6 +151,7 @@ export default function Dashboard() {
       fecha: registro.fecha,
       cliente_id: registro.cliente_id,
       modelo_toner_id: registro.modelo_toner_id,
+      color: registro.color,
       tipo_toner_id: registro.tipo_toner_instalado_id,
       aprobado_por: user.id,
     });
@@ -166,6 +169,7 @@ export default function Dashboard() {
       fecha: registro.fecha,
       cliente_id: registro.cliente_id,
       modelo_toner_id: registro.modelo_toner_id,
+      color: registro.color,
       tipo_toner_id: registro.tipo_toner_instalado_id,
       aprobado_por: user.id,
     });
@@ -194,7 +198,7 @@ export default function Dashboard() {
   return (
     <div className="p-6 mt-24 max-w-7xl mx-auto">
       <Toaster />
-      <h1 className="text-2xl font-bold mb-2">Bienvenido, {user?.username}</h1>
+      <h1 className="text-2xl font-bold mb-2">Bienvenido, {getEmailById(user.id)}</h1>
       <p className="text-gray-600 mb-4">Rol: {user?.role}</p>
 
       {user?.role === 'admin' && (
@@ -211,6 +215,7 @@ export default function Dashboard() {
                     <th className="px-2 py-1">Serie</th>
                     <th className="px-2 py-1">Cliente</th>
                     <th className="px-2 py-1">Modelo</th>
+                    <th className="px-2 py-1">Color</th>
                     <th className="px-2 py-1">Tipo</th>
                     <th className="px-2 py-1">Contador</th>
                     <th className="px-2 py-1">Diferencia</th>
@@ -225,10 +230,15 @@ export default function Dashboard() {
                       <td className="px-2 py-1">{r.serie_maquina}</td>
                       <td className="px-2 py-1">{r.clientes?.nombre}</td>
                       <td className="px-2 py-1">{r.toners?.modelo}</td>
+                      <td className="px-2 py-1">{r.color}</td>
                       <td className="px-2 py-1">{r.tipos_toner?.nombre}</td>
                       <td className="px-2 py-1">{formatearNumeroCL(r.ultimo_contador)} → {formatearNumeroCL(r.contador_actual)}</td>
                       <td className="px-2 py-1">{formatearNumeroCL((r.contador_actual) - (r.ultimo_contador))}</td>
-                      <td className="px-2 py-1">{r.observaciones || '—'}</td>
+                      <td className="px-2 py-1">
+                        {r.observaciones
+                          ? <button onClick={() => setObservacionModal(r.observaciones)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded">Ver</button>
+                          : '—'}
+                      </td>
                       <td className="px-2 py-1 space-x-1">
                         <button onClick={() => aprobarRegistro(r)} className="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700">✅</button>
                         <button onClick={() => rechazarRegistro(r)} className="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700">❌</button>
@@ -274,6 +284,7 @@ export default function Dashboard() {
                   <th className="px-2 py-1">Fecha</th>
                   <th className="px-2 py-1">Cliente</th>
                   <th className="px-2 py-1">Modelo</th>
+                  <th className="px-2 py-1">Color</th>
                   <th className="px-2 py-1">Tipo</th>
                   <th className="px-2 py-1">Estado</th>
                   <th className="px-2 py-1">Observaciones</th>
@@ -287,13 +298,18 @@ export default function Dashboard() {
                     <td className="px-2 py-1">{formatearFecha(r.fecha)}</td>
                     <td className="px-2 py-1">{r.clientes?.nombre}</td>
                     <td className="px-2 py-1">{r.toners?.modelo}</td>
+                    <td className="px-2 py-1">{r.color}</td>
                     <td className="px-2 py-1">{r.tipos_toner?.nombre}</td>
                     <td className="px-2 py-1">
                       <span className={`text-xs font-semibold px-2 py-1 rounded ${r.resultado === 'aprobado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {r.resultado === 'aprobado' ? '✅ Aprobado' : '❌ Rechazado'}
                       </span>
                     </td>
-                    <td className="px-2 py-1">{r.observaciones || '—'}</td>
+                    <td className="px-2 py-1">
+                      {r.observaciones
+                        ? <button onClick={() => setObservacionModal(r.observaciones)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded">Ver</button>
+                        : '—'}
+                    </td>
                     <td className="px-2 py-1">{getEmailById(r.aprobado_por)}</td>
                     <td className="px-2 py-1">
                       <button onClick={() => eliminarHistorial(r.id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">🗑 Limpiar</button>
@@ -303,6 +319,24 @@ export default function Dashboard() {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+      {observacionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-2">Observación</h2>
+            <div className="text-gray-800 whitespace-pre-line break-words">
+              {observacionModal}
+            </div>
+            <div className="text-right mt-4">
+              <button
+                onClick={() => setObservacionModal(null)}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { supabase } from '../lib/supabaseClient';
-import { formatearNumeroCL } from '../utils/formatUtils';
+import { supabase } from "../lib/supabaseClient";
+import { formatearNumeroCL, formatoMiles, desformatearMiles } from '../utils/formatUtils';
 
 export default function RegistroForm() {
   const [serieInput, setSerieInput] = useState('');
@@ -13,6 +13,9 @@ export default function RegistroForm() {
   const [ultimoContador, setUltimoContador] = useState(null);
   const [fechaUltimoCambio, setFechaUltimoCambio] = useState(null);
   const [rendimientoEsperado, setRendimientoEsperado] = useState(null);
+  const [esMaquinaColor, setEsMaquinaColor] = useState(false);
+  const [colorSeleccionado, setColorSeleccionado] = useState('');
+  const [modeloColor, setModeloColor] = useState('');
 
   const [contadorActual, setContadorActual] = useState('');
   const [observaciones, setObservaciones] = useState('');
@@ -60,46 +63,92 @@ export default function RegistroForm() {
         .single();
 
       if (maquina) {
-        let modeloToner = '';
-        let rendimiento = 0;
-
-        if (maquina.modelo_toner_id) {
-          const { data: toner } = await supabase
-            .from('toners')
-            .select('modelo, rendimiento')
-            .eq('id', maquina.modelo_toner_id)
-            .single();
-
-          modeloToner = toner?.modelo || '';
-          rendimiento = toner?.rendimiento || 0;
-        }
-
         setDatosMaquina({
           ...maquina,
           cliente: maquina.clientes?.nombre || '',
           ubicacion: maquina.clientes?.ubicacion || '',
-          modelo_toner: modeloToner,
-          rendimiento,
         });
 
-        setRendimientoEsperado(rendimiento);
         setTipoTonerInstalado(maquina.tipo_toner_id);
+        setColorSeleccionado('');
+        setEsMaquinaColor(false);
+        setModeloColor('');
+        setRendimientoEsperado(0);
+        setUltimoContador(0);
+        setFechaUltimoCambio(null);
 
-        const { data: ultimos } = await supabase
-          .from('registros')
-          .select('contador_actual, fecha')
-          .eq('serie_maquina', serieSeleccionada)
-          .order('fecha', { ascending: false })
-          .limit(1)
-        
-        const ultimo = ultimos?.[0];
+        const { data: colores } = await supabase
+          .from('toner_por_maquina')
+          .select('*')
+          .eq('maquina_id', maquina.id);
 
-        setUltimoContador(ultimo?.contador_actual || 0);
-        setFechaUltimoCambio(ultimo?.fecha || null);
+        if (colores && colores.length > 0) {
+          setEsMaquinaColor(true);
+        } else {
+          if (maquina.modelo_toner_id) {
+            const { data: toner } = await supabase
+              .from('toners')
+              .select('modelo, rendimiento')
+              .eq('id', maquina.modelo_toner_id)
+              .single();
+            setModeloColor(toner?.modelo || '');
+            setRendimientoEsperado(toner?.rendimiento || 0);
+
+            // Obtener último registro si es blanco y negro
+            const { data: ultimos } = await supabase
+              .from('registros')
+              .select('contador_actual, fecha')
+              .eq('serie_maquina', serieSeleccionada)
+              .order('fecha', { ascending: false })
+              .limit(1);
+            const ultimo = ultimos?.[0];
+            setUltimoContador(ultimo?.contador_actual || 0);
+            setFechaUltimoCambio(ultimo?.fecha || null);
+          }
+        }
       }
     };
+
     fetchMaquina();
   }, [serieSeleccionada]);
+
+  useEffect(() => {
+    if (!colorSeleccionado || !datosMaquina?.id) return;
+
+    const fetchColorInfo = async () => {
+      const { data: relacion } = await supabase
+        .from('toner_por_maquina')
+        .select('modelo_toner_id')
+        .eq('maquina_id', datosMaquina.id)
+        .eq('color', colorSeleccionado)
+        .single();
+
+      if (relacion?.modelo_toner_id) {
+        const { data: toner } = await supabase
+          .from('toners')
+          .select('modelo, rendimiento')
+          .eq('id', relacion.modelo_toner_id)
+          .single();
+        setModeloColor(toner?.modelo || '');
+        setRendimientoEsperado(toner?.rendimiento || 0);
+      }
+
+      // Obtener último contador por color
+      const { data: ultimoRegistro } = await supabase
+        .from('registros')
+        .select('contador_actual, fecha')
+        .eq('serie_maquina', serieSeleccionada)
+        .eq('color', colorSeleccionado)
+        .order('fecha', { ascending: false })
+        .limit(1)
+        .single();
+
+      setUltimoContador(ultimoRegistro?.contador_actual || 0);
+      setFechaUltimoCambio(ultimoRegistro?.fecha || null);
+    };
+
+    fetchColorInfo();
+  }, [colorSeleccionado, datosMaquina]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -126,6 +175,7 @@ export default function RegistroForm() {
       serie_maquina: serieSeleccionada,
       modelo_toner_id: datosMaquina.modelo_toner_id,
       tipo_toner_instalado_id: tipoTonerInstalado,
+      color: esMaquinaColor ? colorSeleccionado : null,
       ultimo_contador: ultimoContador,
       contador_actual: contadorNumerico,
       observaciones,
@@ -141,7 +191,6 @@ export default function RegistroForm() {
       setMensajeDuracion(mensaje);
       alert('Registro guardado correctamente');
 
-      // Reset
       setSerieSeleccionada('');
       setSerieInput('');
       setContadorActual('');
@@ -149,12 +198,13 @@ export default function RegistroForm() {
       setGuia('');
       setObservaciones('');
       setDatosMaquina(null);
+      setColorSeleccionado('');
     } else {
       alert('Error al guardar: ' + error.message);
     }
   };
 
-  const formularioInvalido = !fecha || !guia || !serieSeleccionada || contadorActual === '';
+  const formularioInvalido = !fecha || !guia || !serieSeleccionada || contadorActual === '' || (esMaquinaColor && !colorSeleccionado);
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow max-w-2xl mx-auto space-y-6">
@@ -164,27 +214,15 @@ export default function RegistroForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium">Fecha del cambio</label>
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="w-full border p-2 rounded"
-            required
-          />
+          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-full border p-2 rounded" required />
         </div>
         <div>
           <label className="block text-sm font-medium">Guía de despacho</label>
-          <input
-            type="text"
-            value={guia}
-            onChange={(e) => setGuia(e.target.value)}
-            className="w-full border p-2 rounded"
-            required
-          />
+          <input type="text" value={guia} onChange={(e) => setGuia(e.target.value)} className="w-full border p-2 rounded" required />
         </div>
       </div>
 
-      {/* Buscador de serie */}
+      {/* Serie */}
       <div>
         <label className="block text-sm font-medium">Buscar número de serie</label>
         <input
@@ -200,15 +238,11 @@ export default function RegistroForm() {
         {serieInput && maquinasFiltradas.length > 0 && (
           <ul className="border border-gray-300 rounded max-h-40 overflow-y-auto">
             {maquinasFiltradas.map((m) => (
-              <li
-                key={m.id}
-                className="cursor-pointer px-2 py-1 hover:bg-gray-100"
-                onClick={() => {
-                  setSerieSeleccionada(m.serie);
-                  setSerieInput(m.serie);
-                  setMaquinasFiltradas([]);
-                }}
-              >
+              <li key={m.id} className="cursor-pointer px-2 py-1 hover:bg-gray-100" onClick={() => {
+                setSerieSeleccionada(m.serie);
+                setSerieInput(m.serie);
+                setMaquinasFiltradas([]);
+              }}>
                 {m.serie}
               </li>
             ))}
@@ -223,16 +257,25 @@ export default function RegistroForm() {
           <div><strong>Ubicación:</strong> {datosMaquina.ubicacion}</div>
           <div><strong>Departamento:</strong> {datosMaquina.departamento}</div>
           <div><strong>Modelo de máquina:</strong> {datosMaquina.modelo}</div>
-          <div><strong>Modelo de tóner:</strong> {datosMaquina.modelo_toner}</div>
-          <div><strong>Tóner recomendado:</strong> {tiposToner.find(t => t.id === datosMaquina.tipo_toner_id)?.nombre}</div>
-          <div>
-            <label className="block font-medium">Tóner a despachar</label>
-            <select
-              value={tipoTonerInstalado}
-              onChange={(e) => setTipoTonerInstalado(e.target.value)}
-              className="w-full border p-2 rounded"
-              required
-            >
+          {esMaquinaColor ? (
+            <>
+              <div>
+                <label className="block font-medium">Color del tóner a cambiar</label>
+                <select value={colorSeleccionado} onChange={(e) => setColorSeleccionado(e.target.value)} className="w-full border p-2 rounded" required>
+                  <option value="">-- Selecciona color --</option>
+                  <option value="Black">Black</option>
+                  <option value="Cyan">Cyan</option>
+                  <option value="Magenta">Magenta</option>
+                  <option value="Yellow">Yellow</option>
+                </select>
+              </div>
+              <div><strong>Modelo de tóner:</strong> {modeloColor}</div>
+            </>
+          ) : (
+            <div><strong>Modelo de tóner:</strong> {modeloColor}</div>
+          )}
+          <div><strong>Tóner a despachar:</strong>
+            <select value={tipoTonerInstalado} onChange={(e) => setTipoTonerInstalado(e.target.value)} className="w-full border p-2 rounded" required>
               <option value="">-- Selecciona tipo de tóner --</option>
               {tiposToner.map(tipo => (
                 <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
@@ -241,9 +284,7 @@ export default function RegistroForm() {
           </div>
           <div><strong>Rendimiento esperado:</strong> {formatearNumeroCL(rendimientoEsperado)} copias</div>
           <div><strong>Último contador:</strong> {formatearNumeroCL(ultimoContador)}</div>
-          {fechaUltimoCambio && (
-            <div><strong>Último cambio:</strong> {new Date(fechaUltimoCambio).toLocaleDateString()}</div>
-          )}
+          {fechaUltimoCambio && <div><strong>Último cambio:</strong> {new Date(fechaUltimoCambio).toLocaleDateString()}</div>}
         </div>
       )}
 
@@ -251,9 +292,9 @@ export default function RegistroForm() {
       <div>
         <label className="block text-sm font-medium">Contador actual</label>
         <input
-          type="number"
-          value={contadorActual}
-          onChange={(e) => setContadorActual(e.target.value)}
+          type="text"
+          value={formatoMiles(contadorActual)}
+          onChange={(e) => setContadorActual(desformatearMiles(e.target.value))}
           className="w-full border p-2 rounded"
           required
         />
@@ -262,31 +303,18 @@ export default function RegistroForm() {
       {/* Observaciones */}
       <div>
         <label className="block text-sm font-medium">Observaciones</label>
-        <textarea
-          value={observaciones}
-          onChange={(e) => setObservaciones(e.target.value)}
-          className="w-full border p-2 rounded"
-          rows={3}
-        />
+        <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className="w-full border p-2 rounded" rows={3} />
       </div>
 
       {/* Advertencia */}
-      {formularioInvalido && (
-        <p className="text-red-600 text-sm">Completa todos los campos requeridos.</p>
-      )}
+      {formularioInvalido && <p className="text-red-600 text-sm">Completa todos los campos requeridos.</p>}
 
-      {/* Botón */}
-      <button
-        type="submit"
-        disabled={formularioInvalido}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
-      >
+      <button type="submit" disabled={formularioInvalido} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400">
         Guardar registro
       </button>
 
-      {mensajeDuracion && (
-        <p className="mt-3 text-blue-700 font-semibold">{mensajeDuracion}</p>
-      )}
+      {mensajeDuracion && <p className="mt-3 text-blue-700 font-semibold">{mensajeDuracion}</p>}
     </form>
   );
 }
+
