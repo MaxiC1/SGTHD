@@ -1,7 +1,23 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import AppRoutes from './AppRoutes';
+import { useAuthStore } from './store/authStore';
 
 export default function App() {
+  const initializeUser = useAuthStore((state) => state.initializeUser);
+
+  useEffect(() => {
+    initializeUser();
+  }, []);
+
+  return (
+    <Router>
+      <AppRoutes />
+    </Router>
+  );
+}
+
+/*export default function App() {
   return (
     <Router>
       <AppRoutes />

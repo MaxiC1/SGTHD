@@ -250,13 +250,8 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-            <div className="bg-white shadow rounded p-4 h-[400px]">
-              <Bar data={{ labels, datasets: generarDataset(tonerStats) }} options={{ plugins: { title: { display: true, text: 'Cambios por Modelo/Mes' } }, responsive: true, maintainAspectRatio: false }} />
-            </div>
-            <div className="bg-white shadow rounded p-4 h-[400px]">
-              <Bar data={{ labels, datasets: generarDataset(porClienteStats) }} options={{ plugins: { title: { display: true, text: 'Cambios por Cliente/Mes' } }, responsive: true, maintainAspectRatio: false }} />
-            </div>
+          <div className="bg-white shadow rounded p-4 h-[400px]">
+            <Bar data={{ labels, datasets: generarDataset(tonerStats) }} options={{ plugins: { title: { display: true, text: 'Cambios por Modelo/Mes' } }, responsive: true, maintainAspectRatio: false }} />
           </div>
 
           <div className="bg-white shadow rounded p-4 h-[400px] mb-10">

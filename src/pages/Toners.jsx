@@ -87,7 +87,7 @@ export default function Toners() {
               <tr key={toner.id} className="hover:bg-gray-50">
                 <td className="p-2 border">{toner.modelo}</td>
                 <td className="p-2 border">{formatearNumeroCL(toner.rendimiento)}</td>
-                <td className="p-2 border">
+                <td className="px-4 py-2 border space-x-2">
                   <button
                     onClick={() => openModal(toner)}
                     className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded"

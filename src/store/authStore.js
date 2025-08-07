@@ -1,7 +1,35 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabaseClient';
 
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create(
+  persist(
+    (set) => ({
+      user: null,
+      setUser:(user) => {
+        const role = user?.user_metadata?.role || null;
+        set({ user: { ...user, role } });
+      },
+      logout: async () => {
+        await supabase.auth.signOut();
+        set({ user: null });
+      },
+      initializeUser: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const role = user?.user_metadata?.role || null;
+          set({ user: { ...user, role } });
+        }
+      },
+    }),
+    {
+      name: 'auth-storage',
+      getStorage: () => localStorage,
+    }
+  )
+);
+
+/*export const useAuthStore = create((set) => ({
   user: null,
   setUser: (user) => {
     const role = user?.user_metadata?.role || null;
@@ -22,6 +50,7 @@ export const useAuthStore = create((set) => ({
     }
   },
 }));
+*/
 
 
 //Esquema anterior para autentificación

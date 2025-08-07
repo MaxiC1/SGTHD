@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from "../lib/supabaseClient";
@@ -48,6 +49,12 @@ export default function RegistroForm() {
   useEffect(() => {
     if (!serieSeleccionada) {
       setDatosMaquina(null);
+      setEsMaquinaColor(false);
+      setColorSeleccionado('');
+      setModeloColor('');
+      setRendimientoEsperado(null);
+      setUltimoContador(null);
+      setFechaUltimoCambio(null);
       return;
     }
 
@@ -56,7 +63,7 @@ export default function RegistroForm() {
         .from('maquinas')
         .select(`
           id, modelo, cliente_id, modelo_toner_id, tipo_toner_id,
-          departamento, serie,
+          departamento, serie, es_color,
           clientes ( nombre, ubicacion )
         `)
         .eq('serie', serieSeleccionada)
@@ -70,41 +77,29 @@ export default function RegistroForm() {
         });
 
         setTipoTonerInstalado(maquina.tipo_toner_id);
-        setColorSeleccionado('');
-        setEsMaquinaColor(false);
-        setModeloColor('');
-        setRendimientoEsperado(0);
-        setUltimoContador(0);
-        setFechaUltimoCambio(null);
+        setEsMaquinaColor(!!maquina.es_color);
+        setColorSeleccionado(maquina.es_color ? '' : 'Black');
 
-        const { data: colores } = await supabase
-          .from('toner_por_maquina')
-          .select('*')
-          .eq('maquina_id', maquina.id);
+        if (!maquina.es_color && maquina.modelo_toner_id) {
+          const { data: toner } = await supabase
+            .from('toners')
+            .select('modelo, rendimiento')
+            .eq('id', maquina.modelo_toner_id)
+            .single();
 
-        if (colores && colores.length > 0) {
-          setEsMaquinaColor(true);
-        } else {
-          if (maquina.modelo_toner_id) {
-            const { data: toner } = await supabase
-              .from('toners')
-              .select('modelo, rendimiento')
-              .eq('id', maquina.modelo_toner_id)
-              .single();
-            setModeloColor(toner?.modelo || '');
-            setRendimientoEsperado(toner?.rendimiento || 0);
+          setModeloColor(toner?.modelo || '');
+          setRendimientoEsperado(toner?.rendimiento || 0);
 
-            // Obtener último registro si es blanco y negro
-            const { data: ultimos } = await supabase
-              .from('registros')
-              .select('contador_actual, fecha')
-              .eq('serie_maquina', serieSeleccionada)
-              .order('fecha', { ascending: false })
-              .limit(1);
-            const ultimo = ultimos?.[0];
-            setUltimoContador(ultimo?.contador_actual || 0);
-            setFechaUltimoCambio(ultimo?.fecha || null);
-          }
+          const { data: ultimos } = await supabase
+            .from('registros')
+            .select('contador_actual, fecha')
+            .eq('serie_maquina', serieSeleccionada)
+            .order('fecha', { ascending: false })
+            .limit(1);
+
+          const ultimo = ultimos?.[0];
+          setUltimoContador(ultimo?.contador_actual || 0);
+          setFechaUltimoCambio(ultimo?.fecha || null);
         }
       }
     };
@@ -113,12 +108,12 @@ export default function RegistroForm() {
   }, [serieSeleccionada]);
 
   useEffect(() => {
-    if (!colorSeleccionado || !datosMaquina?.id) return;
+    if (!colorSeleccionado || !datosMaquina?.id || !esMaquinaColor) return;
 
     const fetchColorInfo = async () => {
       const { data: relacion } = await supabase
         .from('toner_por_maquina')
-        .select('modelo_toner_id')
+        .select('modelo_toner_id' /* rendimiento_estimado --- Esto se agrego ulitmo*/)
         .eq('maquina_id', datosMaquina.id)
         .eq('color', colorSeleccionado)
         .single();
@@ -130,7 +125,7 @@ export default function RegistroForm() {
           .eq('id', relacion.modelo_toner_id)
           .single();
         setModeloColor(toner?.modelo || '');
-        setRendimientoEsperado(toner?.rendimiento || 0);
+        setRendimientoEsperado(toner?.rendimiento || 0 /*relacion?.rendimiento_estimado --- Esto tambien se cambio*/);
       }
 
       // Obtener último contador por color
@@ -175,7 +170,7 @@ export default function RegistroForm() {
       serie_maquina: serieSeleccionada,
       modelo_toner_id: datosMaquina.modelo_toner_id,
       tipo_toner_instalado_id: tipoTonerInstalado,
-      color: esMaquinaColor ? colorSeleccionado : null,
+      color: esMaquinaColor ? colorSeleccionado : 'Black',
       ultimo_contador: ultimoContador,
       contador_actual: contadorNumerico,
       observaciones,
@@ -198,7 +193,7 @@ export default function RegistroForm() {
       setGuia('');
       setObservaciones('');
       setDatosMaquina(null);
-      setColorSeleccionado('');
+      setColorSeleccionado('' /*esMaquinaColor ? '' : 'Black'*/);
     } else {
       alert('Error al guardar: ' + error.message);
     }
@@ -257,23 +252,31 @@ export default function RegistroForm() {
           <div><strong>Ubicación:</strong> {datosMaquina.ubicacion}</div>
           <div><strong>Departamento:</strong> {datosMaquina.departamento}</div>
           <div><strong>Modelo de máquina:</strong> {datosMaquina.modelo}</div>
-          {esMaquinaColor ? (
-            <>
-              <div>
+          <div>
+            {esMaquinaColor ? (
+              <>
                 <label className="block font-medium">Color del tóner a cambiar</label>
-                <select value={colorSeleccionado} onChange={(e) => setColorSeleccionado(e.target.value)} className="w-full border p-2 rounded" required>
+                <select 
+                  value={colorSeleccionado} 
+                  onChange={(e) => setColorSeleccionado(e.target.value)} 
+                  className="w-full border p-2 rounded" 
+                  required
+                >
                   <option value="">-- Selecciona color --</option>
                   <option value="Black">Black</option>
                   <option value="Cyan">Cyan</option>
                   <option value="Magenta">Magenta</option>
                   <option value="Yellow">Yellow</option>
                 </select>
-              </div>
-              <div><strong>Modelo de tóner:</strong> {modeloColor}</div>
-            </>
-          ) : (
-            <div><strong>Modelo de tóner:</strong> {modeloColor}</div>
-          )}
+              </>
+            ) : (
+              <>
+                <label className="block font-medium">Color del tóner a cambiar</label>
+                <input type="text" value="Black" readOnly className="w-full border p-2 rounded bg-gray-100"/>
+              </>
+            )}
+          </div>
+          <div><strong>Modelo de tóner:</strong> {modeloColor}</div>
           <div><strong>Tóner a despachar:</strong>
             <select value={tipoTonerInstalado} onChange={(e) => setTipoTonerInstalado(e.target.value)} className="w-full border p-2 rounded" required>
               <option value="">-- Selecciona tipo de tóner --</option>
@@ -317,4 +320,3 @@ export default function RegistroForm() {
     </form>
   );
 }
-
