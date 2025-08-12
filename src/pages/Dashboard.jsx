@@ -196,7 +196,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-6 mt-24 max-w-7xl mx-auto">
+    <div className="ml-64 p-6 mt-24 max-w-7xl mx-auto">
       <Toaster />
       <h1 className="text-2xl font-bold mb-2">Bienvenido, {getEmailById(user.id)}</h1>
       <p className="text-gray-600 mb-4">Rol: {user?.role}</p>

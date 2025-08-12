@@ -9,6 +9,13 @@ export default function Maquinas() {
   const [tiposToner, setTiposToner] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMaquina, setEditingMaquina] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const [filtroModelo, setFiltroModelo] = useState('');
+  const [filtroSerie, setFiltroSerie] = useState('');
+  const [filtroToner, setFiltroToner] = useState('');
+  const [filtroCliente, setFiltroCliente] = useState('');
 
   const [form, setForm] = useState({
     modelo: '',
@@ -135,8 +142,33 @@ export default function Maquinas() {
     }
   };
 
+  const maquinasFiltradas = maquinas.filter((m) =>
+    m.modelo.toLowerCase().includes(filtroModelo.toLowerCase()) &&
+    m.serie.toLowerCase().includes(filtroSerie.toLowerCase()) &&
+    m.tipos_toner?.nombre.toLowerCase().includes(filtroToner.toLowerCase()) &&
+    m.clientes?.nombre.toLowerCase().includes(filtroCliente.toLowerCase())
+  );
+
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = maquinasFiltradas.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(maquinasFiltradas.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handlePrevious = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+  
+  const handleNext = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
   return (
-    <div className="p-6 mt-20 max-w-7xl mx-auto">
+    <div className="ml-64 p-6 max-w-6xl mx-auto mt-24">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-gray-800">Gestión de Máquinas</h2>
         <button
@@ -146,11 +178,71 @@ export default function Maquinas() {
           + Nueva Máquina
         </button>
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Modelo:</label>
+          <select
+            value={filtroModelo}
+            onChange={(e) => setFiltroModelo(e.target.value)}
+            className="w-full border px-2 py-1 rounded"
+          >
+            <option value="">Todos</option>
+            {[...new Set(maquinas.map((m) => m.modelo))].map((modelo) => (
+              <option key={modelo} value={modelo}>
+                {modelo}
+              </option>
+            ))}
+          </select>
+        </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Serie:</label>
+          <input
+            type="text"
+            value={filtroSerie}
+            onChange={(e) => setFiltroSerie(e.target.value)}
+            className="w-full border px-2 py-1 rounded"
+            placeholder="Buscar por serie"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Tipo de Tóner:</label>
+          <select
+            value={filtroToner}
+            onChange={(e) => setFiltroToner(e.target.value)}
+            className="w-full border px-2 py-1 rounded"
+          >
+            <option value="">Todos</option>
+            {tiposToner.map((tipo) => (
+              <option key={tipo.id} value={tipo.nombre}>
+                {tipo.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+          
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Cliente:</label>
+          <select
+            value={filtroCliente}
+            onChange={(e) => setFiltroCliente(e.target.value)}
+            className="w-full border px-2 py-1 rounded"
+          >
+            <option value="">Todos</option>
+            {clientes.map((cliente) => (
+              <option key={cliente.id} value={cliente.nombre}>
+                {cliente.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
       <div className="overflow-x-auto bg-white rounded shadow">
         <table className="w-full text-sm text-left border border-gray-200">
           <thead className="bg-blue-50 text-gray-700">
             <tr>
+              <th className="px-4 py-2 border">N°</th>
               <th className="px-4 py-2 border">Modelo</th>
               <th className="px-4 py-2 border">Serie</th>
               <th className="px-4 py-2 border">Tipo de Tóner</th>
@@ -163,8 +255,9 @@ export default function Maquinas() {
             </tr>
           </thead>
           <tbody>
-            {maquinas.map((m) => (
+            {currentItems.map((m, index) => (
               <tr key={m.id} className="hover:bg-gray-50">
+                <td className="px-4 py-2 border">{indexOfFirstItem + index + 1}</td>
                 <td className="px-4 py-2 border">{m.modelo}</td>
                 <td className="px-4 py-2 border">{m.serie}</td>
                 <td className="px-4 py-2 border">{m.tipos_toner?.nombre}</td>
@@ -192,6 +285,58 @@ export default function Maquinas() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-wrap justify-center items-center space-x-2 mt-4 max-w-full overflow-x-auto px-2">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Anterior
+          </button>
+          
+          <div className="flex flex-wrap justify-center items-center space-x-2 mb-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, Math.ceil(totalPages / 2)).map((page) => (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`px-3 py-1 rounded ${
+                  currentPage === page
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap justify-center items-center space-x-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.ceil(totalPages / 2)).map((page) => (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`px-3 py-1 rounded ${
+                  currentPage === page
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+          
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
@@ -250,5 +395,5 @@ export default function Maquinas() {
         </div>
       )}
     </div>
-  );
+  );  
 }

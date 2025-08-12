@@ -3,6 +3,25 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from "../lib/supabaseClient";
 import { formatearNumeroCL, formatoMiles, desformatearMiles } from '../utils/formatUtils';
+import { normalizeDateForStorage, getTodayDateString } from '../utils/dateUtils';
+
+const aplicarRebajaPorTipoToner = (rendimiento, tipoTonerInstalado, tiposToner) => {
+  if (!rendimiento || !tipoTonerInstalado || !Array.isArray(tiposToner)) return rendimiento;
+
+  const tipo = tiposToner.find(t => t.id === tipoTonerInstalado);
+  if (!tipo) return rendimiento;
+
+  const nombre = tipo.nombre.toLowerCase();
+
+  let rebaja = 0;
+  if (['sh', 'wp', 'alternativo generico'].includes(nombre)) {
+    rebaja = 0.4;
+  } else if (['original', 'integral'].includes(nombre)) {
+    rebaja = 0.2;
+  }
+
+  return Math.round(rendimiento * (1 - rebaja));
+};
 
 export default function RegistroForm() {
   const [serieInput, setSerieInput] = useState('');
@@ -20,11 +39,29 @@ export default function RegistroForm() {
 
   const [contadorActual, setContadorActual] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [fecha, setFecha] = useState('');
+  const [fecha, setFecha] = useState(getTodayDateString());
   const [guia, setGuia] = useState('');
   const [mensajeDuracion, setMensajeDuracion] = useState('');
 
+  const [rendimientoOriginal, setRendimientoOriginal] = useState(null);
+
   const user = useAuthStore(state => state.user);
+
+  const handleSeleccionToner = async (tonerId) => {
+    setTipoTonerInstalado(tonerId);
+
+    if (!datosMaquina?.modelo_toner_id) return;
+
+    const { data, error } = await supabase
+      .from('toners')
+      .select('*')
+      .eq('id', datosMaquina.modelo_toner_id)
+      .single();
+
+    if (!error && data) {
+      setRendimientoOriginal(data.rendimiento);
+    }
+  };
 
   useEffect(() => {
     const fetchDatos = async () => {
@@ -76,7 +113,7 @@ export default function RegistroForm() {
           ubicacion: maquina.clientes?.ubicacion || '',
         });
 
-        setTipoTonerInstalado(maquina.tipo_toner_id);
+        setTipoTonerInstalado(prev => prev || maquina.tipo_toner_id);
         setEsMaquinaColor(!!maquina.es_color);
         setColorSeleccionado(maquina.es_color ? '' : 'Black');
 
@@ -88,7 +125,9 @@ export default function RegistroForm() {
             .single();
 
           setModeloColor(toner?.modelo || '');
-          setRendimientoEsperado(toner?.rendimiento || 0);
+          setRendimientoEsperado(
+            aplicarRebajaPorTipoToner(toner?.rendimiento || 0, maquina.tipo_toner_id, tiposToner)
+          );
 
           const { data: ultimos } = await supabase
             .from('registros')
@@ -125,7 +164,9 @@ export default function RegistroForm() {
           .eq('id', relacion.modelo_toner_id)
           .single();
         setModeloColor(toner?.modelo || '');
-        setRendimientoEsperado(toner?.rendimiento || 0 /*relacion?.rendimiento_estimado --- Esto tambien se cambio*/);
+        setRendimientoEsperado(
+          aplicarRebajaPorTipoToner(toner?.rendimiento || 0, tipoTonerInstalado, tiposToner)
+        );
       }
 
       // Obtener último contador por color
@@ -147,6 +188,7 @@ export default function RegistroForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const contadorNumerico = parseInt(contadorActual);
 
     if (contadorNumerico < (ultimoContador ?? 0)) {
@@ -162,8 +204,15 @@ export default function RegistroForm() {
       return;
     }
 
+    // Ajustar fecha para zona horaria GMT-4 (Chile)
+    const [year, month, day] = fecha.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day + 1);
+    // Agregar 4 horas para compensar GMT-4
+    localDate.setHours(localDate.getHours() + 4);
+    const adjustedDate = localDate.toISOString().split('T')[0];
+    
     const { error } = await supabase.from('registros_pendientes').insert([{
-      fecha,
+      fecha: adjustedDate, // Fecha ajustada para GMT-4
       guia,
       cliente_id: datosMaquina.cliente_id,
       modelo_maquina: datosMaquina.modelo,
@@ -200,6 +249,18 @@ export default function RegistroForm() {
   };
 
   const formularioInvalido = !fecha || !guia || !serieSeleccionada || contadorActual === '' || (esMaquinaColor && !colorSeleccionado);
+
+  useEffect(() => {
+    if(!rendimientoOriginal || !tipoTonerInstalado || tiposToner.length === 0) return;
+
+    const rendimientoAjustado = aplicarRebajaPorTipoToner(
+      rendimientoOriginal, 
+      tipoTonerInstalado, 
+      tiposToner
+    );
+
+    setRendimientoEsperado(rendimientoAjustado);
+  }, [tipoTonerInstalado, rendimientoOriginal, tiposToner]);
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow max-w-2xl mx-auto space-y-6">
@@ -278,7 +339,7 @@ export default function RegistroForm() {
           </div>
           <div><strong>Modelo de tóner:</strong> {modeloColor}</div>
           <div><strong>Tóner a despachar:</strong>
-            <select value={tipoTonerInstalado} onChange={(e) => setTipoTonerInstalado(e.target.value)} className="w-full border p-2 rounded" required>
+            <select value={tipoTonerInstalado} onChange={(e) => handleSeleccionToner(Number(e.target.value))} className="w-full border p-2 rounded" required>
               <option value="">-- Selecciona tipo de tóner --</option>
               {tiposToner.map(tipo => (
                 <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>

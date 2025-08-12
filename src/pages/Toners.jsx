@@ -8,6 +8,8 @@ export default function Toners() {
   const [editing, setEditing] = useState(null);
   const [modelo, setModelo] = useState('');
   const [rendimiento, setRendimiento] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchToners();
@@ -63,7 +65,7 @@ export default function Toners() {
   };
 
   return (
-    <div className="p-6">
+    <div className="ml-64 p-6">
       <h1 className="text-2xl font-bold text-blue-700 mb-6">Modelos de Tóner</h1>
 
       <button
@@ -83,7 +85,7 @@ export default function Toners() {
             </tr>
           </thead>
           <tbody>
-            {toners.map((toner) => (
+            {toners.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((toner) => (
               <tr key={toner.id} className="hover:bg-gray-50">
                 <td className="p-2 border">{toner.modelo}</td>
                 <td className="p-2 border">{formatearNumeroCL(toner.rendimiento)}</td>
@@ -106,6 +108,41 @@ export default function Toners() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {toners.length > itemsPerPage && (
+        <div className="flex justify-center items-center space-x-2 mt-4">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+          >
+            Anterior
+          </button>
+          
+          {Array.from({ length: Math.ceil(toners.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-3 py-1 border rounded ${
+                currentPage === page
+                  ? 'bg-blue-600 text-white'
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(toners.length / itemsPerPage)))}
+            disabled={currentPage === Math.ceil(toners.length / itemsPerPage)}
+            className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (

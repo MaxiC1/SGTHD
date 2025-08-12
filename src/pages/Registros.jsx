@@ -19,6 +19,8 @@ export default function Registros() {
   const [filtroLimite, setFiltroLimite] = useState('');
 
   const [observacionModal, setObservacionModal] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const fetchEmails = async (ids) => {
     const { data, error } = await supabase.rpc('obtener_emails', { ids });
@@ -88,6 +90,29 @@ export default function Registros() {
     ? registrosFiltrados.slice(0, parseInt(filtroLimite))
     : registrosFiltrados;
 
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = withLimit.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(withLimit.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handlePrevious = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNext = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filtroSerie, filtroCliente, filtroToner, fechaInicio, fechaFin, filtroLimite]);
+
   const eliminarRegistro = async (id) => {
     if (confirm('¿Estás seguro de eliminar este registro?')) {
       const { error } = await supabase.from('registros').delete().eq('id', id);
@@ -100,7 +125,7 @@ export default function Registros() {
   };
 
   return (
-    <div className="p-4 mt-20">
+    <div className="ml-50 p-6 max-w-6xl mx-auto mt-24">
       <h1 className="text-xl font-bold mb-4">Registros de Cambios de Tóner</h1>
 
       {/* Filtros */}
@@ -168,46 +193,46 @@ export default function Registros() {
       </div>
 
       {/* Tabla de registros */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full border text-sm">
+      <div className="overflow-x-auto w-full block">
+        <table className="min-w-full border text-xs">
           <thead className="bg-gray-200">
             <tr>
-              <th className="border p-2">Fecha</th>
-              <th className="border p-2">Guía</th>
-              <th className="border p-2">Cliente</th>
-              <th className="border p-2">Modelo</th>
-              <th className="border p-2">Serie</th>
-              <th className="border p-2">Tóner</th>
-              <th className="border p-2">Color</th>
-              <th className="border p-2">Tipo</th>
-              <th className="border p-2">Último Contador</th>
-              <th className="border p-2">Contador Actual</th>
-              <th className="border p-2">Diferencia</th>
-              <th className="border p-2">Obs.</th>
-              <th className="border p-2">Estado Tóner</th>
-              <th className="border p-2">Aprobado por</th>
+              <th className="border px-1 py-1">Fecha</th>
+              <th className="border px-1 py-1">Guía</th>
+              <th className="border px-1 py-1">Cliente</th>
+              <th className="border px-1 py-1">Modelo</th>
+              <th className="border px-1 py-1">Serie</th>
+              <th className="border px-1 py-1">Tóner</th>
+              <th className="border px-1 py-1">Color</th>
+              <th className="border px-1 py-1">Tipo</th>
+              <th className="border px-1 py-1">Último Contador</th>
+              <th className="border px-1 py-1">Contador Actual</th>
+              <th className="border px-1 py-1">Diferencia</th>
+              <th className="border px-1 py-1">Obs.</th>
+              <th className="border px-1 py-1">Estado Tóner</th>
+              <th className="border px-1 py-1">Aprobado por</th>
             </tr>
           </thead>
           <tbody>
-            {withLimit.map(r => (
+            {currentItems.map(r => (
               <tr key={r.id}>
-                <td className="border p-2">{new Date(r.fecha).toLocaleDateString()}</td>
-                <td className="border p-2">{r.guia || '-'}</td>
-                <td className="border p-2">{r.clientes?.nombre || '-'}</td>
-                <td className="border p-2">{r.modelo_maquina || '-'}</td>
-                <td className="border p-2">{r.serie_maquina || '-'}</td>
-                <td className="border p-2">{r.toners?.modelo || '-'}</td>
-                <td className="border p-2">{r.color || '-'}</td>
-                <td className="border p-2">{r.tipos_toner_instalado?.nombre || '-'}</td>
-                <td className="border p-2">{formatearNumeroCL(r.ultimo_contador || 0)}</td>
-                <td className="border p-2">{formatearNumeroCL(r.contador_actual || 0)}</td>
-                <td className="border p-2">{formatearNumeroCL(r.contador_actual - r.ultimo_contador)}</td>
-                <td className="border p-2">
+                <td className="border px-1 py-1">{new Date(r.fecha).toLocaleDateString()}</td>
+                <td className="border px-1 py-1">{r.guia || '-'}</td>
+                <td className="border px-1 py-1">{r.clientes?.nombre || '-'}</td>
+                <td className="border px-1 py-1">{r.modelo_maquina || '-'}</td>
+                <td className="border px-1 py-1">{r.serie_maquina || '-'}</td>
+                <td className="border px-1 py-1">{r.toners?.modelo || '-'}</td>
+                <td className="border px-1 py-1">{r.color || '-'}</td>
+                <td className="border px-1 py-1">{r.tipos_toner_instalado?.nombre || '-'}</td>
+                <td className="border px-1 py-1">{formatearNumeroCL(r.ultimo_contador || 0)}</td>
+                <td className="border px-1 py-1">{formatearNumeroCL(r.contador_actual || 0)}</td>
+                <td className="border px-1 py-1">{formatearNumeroCL(r.contador_actual - r.ultimo_contador)}</td>
+                <td className="border px-1 py-1">
                   {r.observaciones
                     ? <button className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded" onClick={() => setObservacionModal(r.observaciones)}>Ver</button>
                     : '-'}
                 </td>
-                <td className="border p-2">
+                <td className="border px-1 py-1">
                   {(() => {
                     const dif = (r.contador_actual || 0) - (r.ultimo_contador || 0);
                     const rend = r.toners?.rendimiento || 0;
@@ -218,12 +243,47 @@ export default function Registros() {
                     return <span className="text-green-600 font-semibold">OK</span>;
                   })()}
                 </td>
-                <td className="border p-2">{r.aprobado_por_email}</td>
+                <td className="border px-1 py-1">{r.aprobado_por_email}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex justify-center items-center space-x-2">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Anterior
+          </button>
+          
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
+            <button
+              key={pageNumber}
+              onClick={() => handlePageChange(pageNumber)}
+              className={`px-3 py-1 border rounded ${
+                currentPage === pageNumber
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300'
+              }`}
+            >
+              {pageNumber}
+            </button>
+          ))}
+          
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
 
       {/* Modal de observaciones */}
       {observacionModal && (
